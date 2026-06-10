@@ -13,6 +13,44 @@
         </div>
       </div>
 
+      <div v-if="data.todos && data.todos.length" class="todo-section">
+        <div class="todo-title">
+          <el-icon><Bell /></el-icon>
+          <span>待办提醒</span>
+          <el-tag size="small" type="danger" effect="dark">{{ data.todos.length }}</el-tag>
+        </div>
+        <div class="todo-list">
+          <div
+            v-for="item in data.todos"
+            :key="item.id"
+            class="todo-item"
+            :class="`priority-${item.priority} type-${item.type}`"
+            @click="handleTodoClick(item)"
+          >
+            <div class="todo-icon">
+              <span v-if="item.type === 'exchange'">🤝</span>
+              <span v-else-if="item.type === 'review'">⭐</span>
+              <span v-else>💬</span>
+            </div>
+            <div class="todo-main">
+              <div class="todo-top">
+                <span class="todo-category" :class="`cat-${item.category}`">{{ item.category }}</span>
+                <span class="todo-name">{{ item.title }}</span>
+                <span v-if="item.counterpartyName" class="todo-counterparty">
+                  <el-avatar :src="item.counterpartyAvatar" :size="20" />
+                  {{ item.counterpartyName }}
+                </span>
+              </div>
+              <div v-if="item.description" class="todo-desc">{{ item.description }}</div>
+            </div>
+            <div class="todo-meta">
+              <span class="todo-time">{{ formatTime(item.time) }}</span>
+              <el-icon class="todo-arrow"><ArrowRight /></el-icon>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div v-if="data.myStats" class="stats-overview">
         <div class="stat-card" @click="activeSection = 'matches'">
           <div class="stat-icon match">🎯</div>
@@ -150,10 +188,11 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { statsAPI } from '../api'
 import dayjs from 'dayjs'
+import { Bell, ArrowRight } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 
 const router = useRouter()
-const data = ref({ myStats: null, leaderboard: [], timeline: [] })
+const data = ref({ myStats: null, leaderboard: [], timeline: [], todos: [] })
 const activeSection = ref('overview')
 const activeTimeline = ref('all')
 const radarChartRef = ref(null)
@@ -195,6 +234,14 @@ function goToProfile(userId) {
 
 function formatTime(t) {
   return dayjs(t).format('YYYY-MM-DD HH:mm')
+}
+
+function handleTodoClick(todo) {
+  if (todo.action) {
+    router.push(todo.action)
+  } else if (todo.counterparty) {
+    router.push(`/profile/${todo.counterparty}`)
+  }
 }
 
 function initRadarChart() {
@@ -301,6 +348,148 @@ function initRadarChart() {
 .rank-total {
   font-size: 14px;
   opacity: 0.85;
+}
+
+.todo-section {
+  margin-top: 8px;
+  padding: 20px;
+  background: linear-gradient(135deg, #fff5f5 0%, #fff9f0 100%);
+  border: 1px solid #ffd4d4;
+  border-radius: 12px;
+}
+
+.todo-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #c0392b;
+  margin-bottom: 16px;
+}
+
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 4px solid #e0e0e0;
+}
+
+.todo-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.12);
+  border-color: #667eea40;
+}
+
+.todo-item.priority-high {
+  border-left-color: #f56c6c;
+}
+
+.todo-item.priority-medium {
+  border-left-color: #e6a23c;
+}
+
+.todo-item.priority-low {
+  border-left-color: #67c23a;
+}
+
+.todo-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+.todo-item.type-exchange .todo-icon { background: #e8f8ee; }
+.todo-item.type-review .todo-icon { background: #fff3e0; }
+.todo-item.type-message .todo-icon { background: #eef1ff; }
+
+.todo-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.todo-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.todo-category {
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f0f0f0;
+  color: #666;
+}
+
+.todo-category.cat-待确认 { background: #fef0f0; color: #f56c6c; }
+.todo-category.cat-等待对方 { background: #fff9f0; color: #e6a23c; }
+.todo-category.cat-待评价 { background: #fff3e0; color: #ff9800; }
+.todo-category.cat-待回复 { background: #eef1ff; color: #667eea; }
+
+.todo-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.todo-counterparty {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #667eea;
+  margin-left: auto;
+}
+
+.todo-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.todo-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.todo-time {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.todo-arrow {
+  color: #667eea;
+  font-size: 16px;
 }
 
 .stats-overview {

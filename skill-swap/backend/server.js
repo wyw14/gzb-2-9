@@ -612,14 +612,109 @@ app.get('/api/stats/growth-board', authMiddleware, (req, res) => {
     }
   });
 
+  const todos = [];
+
+  exchanges.forEach(e => {
+    const isParty = e.initiatorId === myId || e.partnerId === myId;
+    if (!isParty) return;
+    const otherId = e.initiatorId === myId ? e.partnerId : e.initiatorId;
+    const other = userIdToInfo[otherId];
+    if (e.status === 'pending') {
+      const iConfirmed = (e.confirmedBy || []).includes(myId);
+      if (!iConfirmed) {
+        todos.push({
+          id: `exchange-confirm-${e.id}`,
+          type: 'exchange',
+          category: '待确认',
+          priority: 'high',
+          title: '待确认交换请求',
+          description: `与 ${other?.username || '对方'} 的技能交换需要你确认：教 ${e.skills?.teach?.join('/') || '-'}，学 ${e.skills?.learn?.join('/') || '-'}`,
+          time: e.createdAt,
+          relatedId: e.id,
+          counterparty: otherId,
+          counterpartyName: other?.username,
+          counterpartyAvatar: other?.avatar,
+          action: '/exchanges'
+        });
+      } else {
+        todos.push({
+          id: `exchange-wait-${e.id}`,
+          type: 'exchange',
+          category: '等待对方',
+          priority: 'medium',
+          title: '等待对方确认交换',
+          description: `已确认与 ${other?.username || '对方'} 的交换，等待对方确认中`,
+          time: e.createdAt,
+          relatedId: e.id,
+          counterparty: otherId,
+          counterpartyName: other?.username,
+          counterpartyAvatar: other?.avatar,
+          action: '/exchanges'
+        });
+      }
+    } else if (e.status === 'completed') {
+      const iReviewed = reviews.some(r => r.exchangeId === e.id && r.reviewerId === myId);
+      if (!iReviewed) {
+        todos.push({
+          id: `review-${e.id}`,
+          type: 'review',
+          category: '待评价',
+          priority: 'medium',
+          title: '请评价本次交换',
+          description: `与 ${other?.username || '对方'} 的交换已完成，去留下评价吧`,
+          time: e.completedAt || e.createdAt,
+          relatedId: e.id,
+          counterparty: otherId,
+          counterpartyName: other?.username,
+          counterpartyAvatar: other?.avatar,
+          action: `/profile/${otherId}`
+        });
+      }
+    }
+  });
+
+  const unreadMessages = messages.filter(m => m.receiverId === myId && !m.read);
+  const groupedUnread = {};
+  unreadMessages.forEach(m => {
+    if (!groupedUnread[m.senderId]) {
+      groupedUnread[m.senderId] = { count: 0, last: m };
+    }
+    groupedUnread[m.senderId].count++;
+    groupedUnread[m.senderId].last = m;
+  });
+  Object.entries(groupedUnread).forEach(([senderId, info]) => {
+    const sender = userIdToInfo[senderId];
+    todos.push({
+      id: `msg-${senderId}`,
+      type: 'message',
+      category: '待回复',
+      priority: info.count > 3 ? 'high' : 'low',
+      title: `有 ${info.count} 条未读消息`,
+      description: info.last.content.slice(0, 60),
+      time: info.last.createdAt,
+      counterparty: senderId,
+      counterpartyName: sender?.username,
+      counterpartyAvatar: sender?.avatar,
+      action: `/chat/${senderId}`
+    });
+  });
+
+  todos.sort((a, b) => {
+    const pOrder = { high: 0, medium: 1, low: 2 };
+    if (pOrder[a.priority] !== pOrder[b.priority]) return pOrder[a.priority] - pOrder[b.priority];
+    return new Date(b.time) - new Date(a.time);
+  });
+
   res.json({
     myStats: {
       ...myStats,
       rank: myRankIndex + 1,
-      totalUsers: userStats.length
+      totalUsers: userStats.length,
+      todoCount: todos.length
     },
     leaderboard: userStats.slice(0, 20),
-    timeline: timeline.slice(0, 50)
+    timeline: timeline.slice(0, 50),
+    todos
   });
 });
 
