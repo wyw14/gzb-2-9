@@ -71,7 +71,7 @@
               <el-icon><ChatDotRound /></el-icon>开始聊天
             </el-button>
             <el-button type="success" @click="createExchange(match)">
-              <el-icon><Handshake /></el-icon>发起交换
+              <el-icon><Connection /></el-icon>发起交换
             </el-button>
           </div>
         </div>
@@ -88,12 +88,13 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { matchAPI, skillAPI, exchangeAPI } from '../api'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh, User, ChatDotRound, Switch, Handshake } from '@element-plus/icons-vue'
+import { Search, Refresh, User, ChatDotRound, Switch, Connection } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const route = useRoute()
 const matches = ref([])
 const categories = ref([])
 const filters = ref({
@@ -116,6 +117,15 @@ const filteredMatches = computed(() => {
 })
 
 onMounted(async () => {
+  if (route.query.skill) {
+    filters.value.keyword = route.query.skill
+  }
+  if (route.query.category) {
+    filters.value.category = route.query.category
+  }
+  if (route.query.minScore) {
+    filters.value.minScore = parseInt(route.query.minScore)
+  }
   await loadCategories()
   await loadMatches()
 })

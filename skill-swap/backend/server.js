@@ -455,6 +455,54 @@ app.get('/api/stats/success-rate', (req, res) => {
   });
 });
 
+app.get('/api/stats/mentors', (req, res) => {
+  const skills = readJson('skills.json');
+  const users = readJson('users.json');
+  const reviews = readJson('reviews.json');
+
+  const teachSkillMap = {};
+  skills.filter(s => s.type === 'teach').forEach(s => {
+    if (!teachSkillMap[s.userId]) teachSkillMap[s.userId] = [];
+    teachSkillMap[s.userId].push(s.name);
+  });
+
+  const mentorIds = Object.keys(teachSkillMap);
+  const mentors = mentorIds.map(uid => {
+    const user = users.find(u => u.id === uid);
+    if (!user) return null;
+    const { password: _, ...rest } = user;
+    const userReviews = reviews.filter(r => r.targetUserId === uid);
+    return {
+      ...rest,
+      teachSkills: teachSkillMap[uid],
+      reviewCount: userReviews.length
+    };
+  }).filter(Boolean).sort((a, b) => b.rating - a.rating).slice(0, 20);
+
+  res.json(mentors);
+});
+
+app.get('/api/stats/active-exchangers', (req, res) => {
+  const users = readJson('users.json');
+  const skills = readJson('skills.json');
+
+  const activeUsers = users
+    .map(u => {
+      const { password: _, ...rest } = u;
+      const userSkills = skills.filter(s => s.userId === u.id);
+      return {
+        ...rest,
+        teachCount: userSkills.filter(s => s.type === 'teach').length,
+        learnCount: userSkills.filter(s => s.type === 'learn').length
+      };
+    })
+    .filter(u => u.exchangeCount > 0)
+    .sort((a, b) => b.exchangeCount - a.exchangeCount)
+    .slice(0, 20);
+
+  res.json(activeUsers);
+});
+
 app.get('/api/skill-categories', (req, res) => {
   const categories = readJson('skillCategories.json');
   res.json(categories);

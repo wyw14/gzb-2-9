@@ -66,7 +66,9 @@ export const reviewAPI = {
 
 export const statsAPI = {
   getPopularSkills: () => api.get('/stats/popular-skills'),
-  getSuccessRate: () => api.get('/stats/success-rate')
+  getSuccessRate: () => api.get('/stats/success-rate'),
+  getMentors: () => api.get('/stats/mentors'),
+  getActiveExchangers: () => api.get('/stats/active-exchangers')
 }
 
 export const skillTreeAPI = {
