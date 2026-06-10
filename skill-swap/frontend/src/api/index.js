@@ -68,7 +68,8 @@ export const statsAPI = {
   getPopularSkills: () => api.get('/stats/popular-skills'),
   getSuccessRate: () => api.get('/stats/success-rate'),
   getMentors: () => api.get('/stats/mentors'),
-  getActiveExchangers: () => api.get('/stats/active-exchangers')
+  getActiveExchangers: () => api.get('/stats/active-exchangers'),
+  getGrowthBoard: () => api.get('/stats/growth-board')
 }
 
 export const skillTreeAPI = {

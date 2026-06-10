@@ -503,6 +503,126 @@ app.get('/api/stats/active-exchangers', (req, res) => {
   res.json(activeUsers);
 });
 
+app.get('/api/stats/growth-board', authMiddleware, (req, res) => {
+  const users = readJson('users.json');
+  const skills = readJson('skills.json');
+  const messages = readJson('messages.json');
+  const exchanges = readJson('exchanges.json');
+  const reviews = readJson('reviews.json');
+
+  const myId = req.user.id;
+  const me = users.find(u => u.id === myId);
+  if (!me) return res.status(404).json({ error: '用户不存在' });
+
+  const userStats = users.map(u => {
+    const { password: _, ...rest } = u;
+    const userSkills = skills.filter(s => s.userId === u.id);
+    const teachSkills = userSkills.filter(s => s.type === 'teach');
+    const learnSkills = userSkills.filter(s => s.type === 'learn');
+
+    const sentMsgs = messages.filter(m => m.senderId === u.id).length;
+    const receivedMsgs = messages.filter(m => m.receiverId === u.id).length;
+
+    const userExchanges = exchanges.filter(e => e.initiatorId === u.id || e.partnerId === u.id);
+    const completedExchanges = userExchanges.filter(e => e.status === 'completed').length;
+    const pendingExchanges = userExchanges.filter(e => e.status === 'pending').length;
+
+    const receivedReviews = reviews.filter(r => r.targetUserId === u.id);
+    const avgRating = receivedReviews.length
+      ? receivedReviews.reduce((s, r) => s + r.rating, 0) / receivedReviews.length
+      : 0;
+
+    const matchCount = users
+      .filter(o => o.id !== u.id)
+      .reduce((count, other) => {
+        const otherSkills = skills.filter(s => s.userId === other.id);
+        if (otherSkills.length === 0 || userSkills.length === 0) return count;
+        const score = require('./utils/matching').calculateMatchScore(
+          userSkills,
+          otherSkills,
+          u.preferences || {},
+          other.preferences || {}
+        );
+        return score >= 30 ? count + 1 : count;
+      }, 0);
+
+    return {
+      ...rest,
+      teachCount: teachSkills.length,
+      learnCount: learnSkills.length,
+      skillTreeCount: (u.skillTree || []).length,
+      sentMessages: sentMsgs,
+      receivedMessages: receivedMsgs,
+      totalMessages: sentMsgs + receivedMsgs,
+      totalExchanges: userExchanges.length,
+      completedExchanges,
+      pendingExchanges,
+      reviewCount: receivedReviews.length,
+      avgRating: Math.round(avgRating * 10) / 10,
+      matchCount
+    };
+  });
+
+  userStats.sort((a, b) =>
+    (b.completedExchanges * 100 + b.totalMessages + b.matchCount) -
+    (a.completedExchanges * 100 + a.totalMessages + a.matchCount)
+  );
+
+  const myRankIndex = userStats.findIndex(u => u.id === myId);
+  const myStats = userStats[myRankIndex];
+
+  const myMessages = messages.filter(m => m.senderId === myId || m.receiverId === myId);
+  const myExchanges = exchanges.filter(e => e.initiatorId === myId || e.partnerId === myId);
+  const myReviews = reviews.filter(r => r.reviewerId === myId || r.targetUserId === myId);
+
+  const timeline = [];
+  myMessages.forEach(m => timeline.push({
+    id: m.id,
+    type: 'message',
+    time: m.createdAt,
+    title: m.senderId === myId ? '发送了消息' : '收到了消息',
+    description: m.content.slice(0, 40),
+    counterparty: m.senderId === myId ? m.receiverId : m.senderId
+  }));
+  myExchanges.forEach(e => timeline.push({
+    id: e.id,
+    type: 'exchange',
+    time: e.createdAt,
+    title: e.status === 'completed' ? '完成了技能交换' : '发起了交换请求',
+    description: `教授: ${e.skills?.teach?.join(', ')}; 学习: ${e.skills?.learn?.join(', ')}`,
+    counterparty: e.initiatorId === myId ? e.partnerId : e.initiatorId,
+    status: e.status
+  }));
+  myReviews.forEach(r => timeline.push({
+    id: r.id,
+    type: 'review',
+    time: r.createdAt,
+    title: r.reviewerId === myId ? '评价了他人' : '收到了评价',
+    description: `${r.rating}分 ${r.comment || ''}`.slice(0, 60),
+    counterparty: r.reviewerId === myId ? r.targetUserId : r.reviewerId
+  }));
+  timeline.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+  const userIdToInfo = {};
+  userStats.forEach(u => { userIdToInfo[u.id] = { username: u.username, avatar: u.avatar }; });
+  timeline.forEach(t => {
+    if (t.counterparty && userIdToInfo[t.counterparty]) {
+      t.counterpartyName = userIdToInfo[t.counterparty].username;
+      t.counterpartyAvatar = userIdToInfo[t.counterparty].avatar;
+    }
+  });
+
+  res.json({
+    myStats: {
+      ...myStats,
+      rank: myRankIndex + 1,
+      totalUsers: userStats.length
+    },
+    leaderboard: userStats.slice(0, 20),
+    timeline: timeline.slice(0, 50)
+  });
+});
+
 app.get('/api/skill-categories', (req, res) => {
   const categories = readJson('skillCategories.json');
   res.json(categories);

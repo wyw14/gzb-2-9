@@ -32,6 +32,10 @@
               <el-icon><Trophy /></el-icon>
               <span>排行榜</span>
             </router-link>
+            <router-link to="/growth-board" class="nav-link">
+              <el-icon><DataAnalysis /></el-icon>
+              <span>成长看板</span>
+            </router-link>
             <router-link to="/exchanges" class="nav-link">
               <el-icon><SwitchButton /></el-icon>
               <span>交换记录</span>
@@ -75,7 +79,7 @@ import { useUserStore } from './stores/user'
 import { ElMessageBox } from 'element-plus'
 import {
   HomeFilled, Edit, Connection, ChatDotRound,
-  Share, Trophy, SwitchButton, User, ArrowDown
+  Share, Trophy, DataAnalysis, SwitchButton, User, ArrowDown
 } from '@element-plus/icons-vue'
 
 const router = useRouter()

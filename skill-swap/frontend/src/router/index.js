@@ -69,6 +69,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/growth-board',
+    name: 'GrowthBoard',
+    component: () => import('../views/GrowthBoard.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/exchanges',
     name: 'Exchanges',
     component: () => import('../views/Exchanges.vue'),
