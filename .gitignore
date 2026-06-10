@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+
+# Caches
+.cache/
+.parcel-cache/
+.vite/
+.turbo/
+.next/
+coverage/
+
+# Large/generated artifacts
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+*.iso
+*.dmg
+*.exe
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
